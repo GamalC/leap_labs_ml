@@ -59,7 +59,7 @@ def perform_attack(image, target_class):
 
 
 def get_adversarial_image(image, epsilon, gradient):
-    print("do attack")
-    adversarial_image = image
+    gradient_sign = gradient.sign()
+    adversarial_image = image + epsilon * gradient_sign
     return adversarial_image
  
