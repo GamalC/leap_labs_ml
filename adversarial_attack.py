@@ -11,6 +11,7 @@ The program should output an image that has been altered with adversarial noise.
 """
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 EPSILON_START = 0.1
@@ -18,9 +19,35 @@ EPSILON_INCREMENT = 0.01
 MAX_ATTEMPTS = 10
 orignal_model_path = "models/lenet_mnist_model.pth"
 
+class Model(nn.Module):
+    def __init__(self):
+        super(Model, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.dropout1 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = self.dropout1(x)
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
+
 def perform_attack(image, target_class):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device is: {device}.")
     model = Model().to(device)
     model.load_state_dict(torch.load(orignal_model_path, map_location=device))
     model.eval()
