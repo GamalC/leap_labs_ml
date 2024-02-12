@@ -14,8 +14,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
 
-EPSILON_START = 0.1
+EPSILON_START = 0.01
 EPSILON_INCREMENT = 0.01
 MAX_ATTEMPTS = 10
 orignal_model_path = "models/lenet_mnist_model.pth"
@@ -56,6 +57,7 @@ def perform_attack(image, target_class):
     attempts_cnt = 0
     success = False
     epsilon = EPSILON_START
+    last_adversarial_image = ()
     while attempts_cnt < MAX_ATTEMPTS and not success:
 
         image, target_class = image.to(device), target_class.to(device)
@@ -73,8 +75,9 @@ def perform_attack(image, target_class):
             loss.backward()
             gradient = image.grad.data
 
-            print("Attempt number: {attempts_cnt}. Epsilon: {epsilon}")
+            print(f"Attempt number: {attempts_cnt}. Epsilon: {epsilon}")
             adversarial_image = get_adversarial_image(image, epsilon, gradient)
+            last_adversarial_image = (attempts_cnt, adversarial_image.squeeze().detach().cpu().numpy())
             output = model(adversarial_image)
             prediction = output.max(1, keepdim=True)[1]
 
@@ -84,6 +87,14 @@ def perform_attack(image, target_class):
             else:
                 attempts_cnt += 1
                 epsilon += EPSILON_INCREMENT
+                print(f"Failure: Output label is: {prediction}")
+
+    print("Attack unsuccessful.")
+
+    attempt_no, image = last_adversarial_image
+    plt.ylabel(f"Attempt no: {attempt_no}")
+    plt.imshow(image, cmap="gray")
+    plt.show()
 
 
 def get_adversarial_image(image, epsilon, gradient):
@@ -100,9 +111,12 @@ if __name__ == '__main__':
             transforms.Normalize((0.1307,), (0.3081,)),
             ])),
         batch_size=1, shuffle=True)
-    
-    image, target =  next(iter(mnist_loader))
-    print(f"Gold target class is: {target}.")
+
+    image, label =  next(iter(mnist_loader))
+    print(f"Gold label class is: {label}.")
+    target_label = '2'
+    target = torch.tensor([int(target_label)])
+    print(target)
     adversarial_image = perform_attack(image, target)
 
  
