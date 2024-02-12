@@ -13,6 +13,7 @@ The program should output an image that has been altered with adversarial noise.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import datasets, transforms
 
 EPSILON_START = 0.1
 EPSILON_INCREMENT = 0.01
@@ -89,4 +90,19 @@ def get_adversarial_image(image, epsilon, gradient):
     gradient_sign = gradient.sign()
     adversarial_image = image + epsilon * gradient_sign
     return adversarial_image
+
+
+if __name__ == '__main__':
+    # Get an image from MNIST dataset
+    mnist_loader = torch.utils.data.DataLoader(
+    datasets.MNIST('../data', train=False, download=True, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+            ])),
+        batch_size=1, shuffle=True)
+    
+    image, target =  next(iter(mnist_loader))
+    print(f"Gold target class is: {target}.")
+    adversarial_image = perform_attack(image, target)
+
  
