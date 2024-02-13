@@ -16,11 +16,14 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
+# Variables to control the progress of the attack
 EPSILON_START = 0.01
 EPSILON_INCREMENT = 0.01
 MAX_ATTEMPTS = 10
+
 orignal_model_path = "models/lenet_mnist_model.pth"
 
+#Definition of the model - pretrained LeNet on MNIST. 
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
@@ -46,8 +49,11 @@ class Model(nn.Module):
         output = F.log_softmax(x, dim=1)
         return output
 
+"""
+Function that actually performs the attack by taking in the input image and the target class and returning the adversarial image if the attack is successful.
+If the attack is not successful, it outputs the last attaemoted image and the class it was classified as. 
+"""
 def perform_attack(image, target_class):
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device is: {device}.")
     model = Model().to(device)
@@ -58,8 +64,8 @@ def perform_attack(image, target_class):
     success = False
     epsilon = EPSILON_START
     last_adversarial_image = ()
+    # Repeatedly perturb the input image 
     while attempts_cnt < MAX_ATTEMPTS and not success:
-
         image, target_class = image.to(device), target_class.to(device)
         image.requires_grad = True
         output = model(image)
@@ -77,6 +83,7 @@ def perform_attack(image, target_class):
 
             print(f"Attempt number: {attempts_cnt}. Epsilon: {epsilon}")
             adversarial_image = get_adversarial_image(image, epsilon, gradient)
+            # Store last image created for later use.
             last_adversarial_image = (attempts_cnt, adversarial_image.squeeze().detach().cpu().numpy())
             output = model(adversarial_image)
             prediction = output.max(1, keepdim=True)[1]
@@ -95,16 +102,22 @@ def perform_attack(image, target_class):
     plt.ylabel(f"Attempt no: {attempt_no}")
     plt.imshow(image, cmap="gray")
     plt.show()
+    return None
 
-
+"""
+Function to create the adversarial image.
+"""
 def get_adversarial_image(image, epsilon, gradient):
     gradient_sign = gradient.sign()
     adversarial_image = image + epsilon * gradient_sign
     return adversarial_image
 
 
+"""
+Test the attack code.
+"""
 if __name__ == '__main__':
-    # Get an image from MNIST dataset
+    # Get an image from the MNIST dataset
     mnist_loader = torch.utils.data.DataLoader(
     datasets.MNIST('../data', train=False, download=True, transform=transforms.Compose([
             transforms.ToTensor(),
@@ -114,9 +127,14 @@ if __name__ == '__main__':
 
     image, label =  next(iter(mnist_loader))
     print(f"Gold label class is: {label}.")
-    target_label = '2'
+    target_label = '2' # Update this as the target class.
     target = torch.tensor([int(target_label)])
     print(target)
     adversarial_image = perform_attack(image, target)
+
+    if adversarial_image:
+        plt.ylabel("Successful image.")
+        plt.imshow(adversarial_image, cmap="gray")
+        plt.show()
 
  
